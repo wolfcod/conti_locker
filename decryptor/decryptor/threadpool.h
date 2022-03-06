@@ -1,6 +1,6 @@
 #pragma once
-#include "common.h"
-#include "queue.h"
+#include "../common.h"
+#include "../queue.h"
 
 #define STOP_MARKER L"stopmarker"
 CONST DWORD BufferSize = 5242880;

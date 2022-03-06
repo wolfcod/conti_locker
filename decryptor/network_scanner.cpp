@@ -1,17 +1,25 @@
-#include "network_scanner.h"
-#include "queue.h"
-#include <iphlpapi.h>
+#include <WinSock2.h>
+#include <MSWSock.h>
 #include <lmshare.h>
 #include <lm.h>
-#include <winnetwk.h>
-#include <icmpapi.h>
+#include <iphlpapi.h>
 #include <ws2ipdef.h>
 #include <ws2tcpip.h>
 #include <shlwapi.h>
-#include <MSWSock.h>
-#include "filesystem.h"
-#include "threadpool.h"
+#include "common.h"
+#include "network_scanner.h"
+#include "queue.h"
+#include "decryptor/threadpool.h"
 
+/*#include "network_scanner.h"
+#include "queue.h"
+
+#include <winnetwk.h>
+#include <icmpapi.h>
+
+#include "filesystem.h"
+#include "decryptor/threadpool.h"
+*/
 #pragma comment(lib, "Iphlpapi.lib")
 #pragma comment(lib, "Netapi32.lib")
 #pragma comment(lib, "shlwapi.lib")

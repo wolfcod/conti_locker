@@ -1,7 +1,5 @@
 #pragma once
-#include <WinSock2.h>
 #include <string>
-#include <iostream>
 #include "MetaString.h"
 
 #define STATIC static

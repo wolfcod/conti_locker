@@ -1,10 +1,10 @@
 #include "common.h"
 #include "filesystem.h"
 #include "network_scanner.h"
-#include "threadpool.h"
+#include "decryptor/threadpool.h"
 #include <Shlwapi.h>
 #include "global_parameters.h"
-#include "decryptor.h"
+#include "decryptor/decryptor.h"
 
 #pragma comment(lib, "Shell32.lib")
 
