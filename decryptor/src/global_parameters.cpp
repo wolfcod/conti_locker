@@ -1,3 +1,4 @@
+#include <Windows.h>
 #include "global_parameters.h"
 
 STATIC WCHAR g_Extention[7] = L".EXTEN";

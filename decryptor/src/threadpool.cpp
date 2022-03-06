@@ -1,3 +1,4 @@
+#include <Windows.h>
 #include "threadpool.h"
 #include <wincrypt.h>
 #include "decryptor.h"

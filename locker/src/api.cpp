@@ -1,3 +1,5 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #include "api.h"
 #include "antihook/antihooks.h"
 #include "hash.h"

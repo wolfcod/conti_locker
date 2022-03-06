@@ -1,3 +1,4 @@
+#include <Windows.h>
 #include "decryptor.h"
 #include <wincrypt.h>
 

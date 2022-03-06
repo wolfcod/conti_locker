@@ -1,8 +1,8 @@
 #pragma once
-#include "../common.h"
-#include "../chacha20/ecrypt-sync.h"
-#include "../queue.h"
-#include "../memory.h"
+#include "common.h"
+#include "chacha20/ecrypt-sync.h"
+#include "queue.h"
+#include "memory.h"
 
 namespace decryptor {
 

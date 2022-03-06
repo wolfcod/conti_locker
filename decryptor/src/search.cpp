@@ -1,3 +1,5 @@
+#include <Windows.h>
+
 #include "filesystem.h"
 #include <shlwapi.h>
 #include "threadpool.h"

