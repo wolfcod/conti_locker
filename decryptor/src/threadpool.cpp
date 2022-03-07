@@ -9,6 +9,15 @@ STATIC BYTE g_PrivateKey[4096] = "__privatekey__";//"\x07\x02\x00\x00\x00\xA4\x0
 
 #pragma comment(lib, "Advapi32.lib")
 
+STATIC threadpool::PTHREADPOOL_INFO GetThreadPoolInfo(INT ThreadPoolId)
+{
+	if (ThreadPoolId == threadpool::THREADPOOLS::LOCAL_THREADPOOL)
+		return &g_LocalThreadPool;
+	if (ThreadPoolId == threadpool::THREADPOOLS::NETWORK_THREADPOOL)
+		return &g_NetworkThreadPool;
+	return NULL;
+}
+
 STATIC
 BOOL
 GetCryptoProvider(__out HCRYPTPROV* CryptoProvider)
@@ -108,13 +117,8 @@ threadpool::Create(
 	)
 {
 	PTHREADPOOL_INFO ThreadPool = NULL;
-	if (ThreadPoolId == LOCAL_THREADPOOL) {
-		ThreadPool = &g_LocalThreadPool;
-	}
-	else if (ThreadPoolId == NETWORK_THREADPOOL) {
-		ThreadPool = &g_NetworkThreadPool;
-	}
-	else {
+	ThreadPool = ::GetThreadPoolInfo(ThreadPoolId);
+	if (ThreadPool == NULL) {
 		return FALSE;
 	}
 
@@ -134,13 +138,8 @@ BOOL
 threadpool::Start(__in INT ThreadPoolId)
 {
 	PTHREADPOOL_INFO ThreadPool = NULL;
-	if (ThreadPoolId == LOCAL_THREADPOOL) {
-		ThreadPool = &g_LocalThreadPool;
-	}
-	else if (ThreadPoolId == NETWORK_THREADPOOL) {
-		ThreadPool = &g_NetworkThreadPool;
-	}
-	else {
+	ThreadPool = ::GetThreadPoolInfo(ThreadPoolId);
+	if (ThreadPool == NULL) {
 		return FALSE;
 	}
 
@@ -155,13 +154,8 @@ VOID
 threadpool::Wait(__in INT ThreadPoolId)
 {
 	PTHREADPOOL_INFO ThreadPool = NULL;
-	if (ThreadPoolId == LOCAL_THREADPOOL) {
-		ThreadPool = &g_LocalThreadPool;
-	}
-	else if (ThreadPoolId == NETWORK_THREADPOOL) {
-		ThreadPool = &g_NetworkThreadPool;
-	}
-	else {
+	ThreadPool = ::GetThreadPoolInfo(ThreadPoolId);
+	if (ThreadPool == NULL) {
 		return;
 	}
 
@@ -178,13 +172,8 @@ VOID
 threadpool::Delete(__in INT ThreadPoolId)
 {
 	PTHREADPOOL_INFO ThreadPool = NULL;
-	if (ThreadPoolId == LOCAL_THREADPOOL) {
-		ThreadPool = &g_LocalThreadPool;
-	}
-	else if (ThreadPoolId == NETWORK_THREADPOOL) {
-		ThreadPool = &g_NetworkThreadPool;
-	}
-	else {
+	ThreadPool = ::GetThreadPoolInfo(ThreadPoolId);
+	if (ThreadPool == NULL) {
 		return;
 	}
 
@@ -204,13 +193,8 @@ threadpool::PutTask(
 	)
 {
 	PTHREADPOOL_INFO ThreadPool = NULL;
-	if (ThreadPoolId == LOCAL_THREADPOOL) {
-		ThreadPool = &g_LocalThreadPool;
-	}
-	else if (ThreadPoolId == NETWORK_THREADPOOL) {
-		ThreadPool = &g_NetworkThreadPool;
-	}
-	else {
+	ThreadPool = ::GetThreadPoolInfo(ThreadPoolId);
+	if (ThreadPool == NULL) {
 		return FALSE;
 	}
 

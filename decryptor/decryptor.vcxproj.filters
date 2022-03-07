@@ -62,12 +62,6 @@
     <ClInclude Include="src\memory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\MetaRandom2.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\MetaString.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\network_scanner.h">
       <Filter>Header Files</Filter>
     </ClInclude>

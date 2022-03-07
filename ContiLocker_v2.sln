@@ -9,6 +9,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "decryptor", "decryptor\decr
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "locker", "locker\locker.vcxproj", "{8FBD3EDA-A634-495A-BB41-8604A967B63A}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "libs", "libs", "{D2AB4909-DDC5-4DFE-AF08-488659A56E47}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "include", "include\include.vcxitems", "{6A85C0A1-68AD-466F-B018-913AD6526291}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64

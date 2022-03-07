@@ -39,7 +39,6 @@ CheckDirectory(__in LPCWSTR Directory)
 {
 	LPCWSTR BlackList[] =
 	{
-
 		OBFW(L"tmp"),
 		OBFW(L"winnt"),
 		OBFW(L"temp"),
@@ -69,7 +68,6 @@ CheckFilename(__in LPCWSTR FileName)
 {
 	LPCWSTR BlackList[] =
 	{
-
 		OBFW(L".exe"),
 		OBFW(L".dll"),
 		OBFW(L".lnk"),

@@ -1,7 +1,8 @@
 #pragma once
 
+#include <MetaString.h>
 #include "antihooks.h"
-#include "../MetaString.h"
+
 
 
 #define DEREF(name) *(UINT_PTR*)(name)
