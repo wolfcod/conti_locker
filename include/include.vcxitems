@@ -14,6 +14,7 @@
     <ProjectCapability Include="SourceItemsFromImports" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="$(MSBuildThisFileDirectory)common.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)MetaRandom2.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)MetaString.h" />
   </ItemGroup>
