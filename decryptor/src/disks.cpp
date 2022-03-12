@@ -2,7 +2,7 @@
 #include "filesystem.h"
 
 INT
-filesystem::EnumirateDrives(PDRIVE_LIST DriveList)
+filesystem::EnumerateDrives(PDRIVE_LIST DriveList)
 {
 	INT Length = 0;
 	INT DrivesCount = 0;

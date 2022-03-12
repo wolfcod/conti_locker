@@ -64,7 +64,7 @@ int main()
 
 	//filesystem::SearchFiles(L"C:\\users\\toha\\Desktop\\test", threadpool::LOCAL_THREADPOOL);
 
-	if (filesystem::EnumirateDrives(&DriveList)) {
+	if (filesystem::EnumerateDrivers(&DriveList)) {
 		hLocalSearch = CreateThread(NULL, 0, filesystem::StartLocalSearch, &DriveList, 0, NULL);
 	}
 
